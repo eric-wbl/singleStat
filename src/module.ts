@@ -1,0 +1,959 @@
+import _ from 'lodash';
+//import $ from 'jquery';
+declare var $: any;
+//import 'vendor/flot/jquery.flot';
+//import 'vendor/flot/jquery.flot.gauge';
+//import 'grafana/app/features/panellinks/link_srv';
+
+import kbn from 'grafana/app/core/utils/kbn';
+import config from 'grafana/app/core/config';
+import TimeSeries from 'grafana/app/core/time_series2';
+import { MetricsPanelCtrl } from 'grafana/app/plugins/sdk';
+
+class SingleStatCtrl extends MetricsPanelCtrl {
+  static templateUrl = 'module.html';
+
+  dataType = 'timeseries';
+  series: any;
+  data: any;
+  fontSizes: any;
+  unitFormats: any;
+  invalidGaugeRange: any;
+  panel: any;
+  events: any;
+  valueNameOptions: any[] = [
+    { value: 'min', text: 'Min' },
+    { value: 'max', text: 'Max' },
+    { value: 'avg', text: 'Average' },
+    { value: 'current', text: 'Current' },
+    { value: 'total', text: 'Total' },
+    { value: 'name', text: 'Name' },
+    { value: 'first', text: 'First' },
+    { value: 'delta', text: 'Delta' },
+    { value: 'diff', text: 'Difference' },
+    { value: 'range', text: 'Range' },
+    { value: 'last_time', text: 'Time of last point' },
+  ];
+  tableColumnOptions: any;
+  labelItem: any[] = [];
+  seriesObj: any[] = [];
+
+  // Set and populate defaults
+  panelDefaults = {
+    links: [],
+    datasource: null,
+    maxDataPoints: 100,
+    interval: null,
+    targets: [{}],
+    cacheTimeout: null,
+    format: 'none',
+    prefix: '',
+    postfix: '',
+    nullText: null,
+    valueMaps: [{ value: 'null', op: '=', text: 'N/A' }],
+    mappingTypes: [
+      { name: 'value to text', value: 1 },
+      { name: 'range to text', value: 2 },
+    ],
+    rangeMaps: [{ from: 'null', to: 'null', text: 'N/A' }],
+    mappingType: 1,
+    nullPointMode: 'connected',
+    valueName: 'avg',
+    prefixFontSize: '50%',
+    valueFontSize: '80%',
+    postfixFontSize: '50%',
+    thresholds: '',
+    colorBackground: false,
+    colorValue: false,
+    colors: ['#299c46', 'rgba(237, 129, 40, 0.89)', '#d44a3a'],
+    sparkline: {
+      show: false,
+      full: false,
+      lineColor: 'rgb(31, 120, 193)',
+      fillColor: 'rgba(31, 118, 189, 0.18)',
+    },
+    gauge: {
+      show: false,
+      minValue: 0,
+      maxValue: 100,
+      thresholdMarkers: true,
+      thresholdLabels: false,
+    },
+    label: {
+      show: false,
+      item: '',
+      decimals: 0,
+    },
+    tableColumn: '',
+    labelItem: [],
+  };
+
+  /** @ngInject */
+  constructor($scope: any, $injector: any) {
+    //constructor($scope, $injector, private $location, private linkSrv) {
+    super($scope, $injector);
+    _.defaults(this.panel, this.panelDefaults);
+
+    this.events.on('data-received', this.onDataReceived.bind(this));
+    this.events.on('data-error', this.onDataError.bind(this));
+    this.events.on('data-snapshot-load', this.onDataReceived.bind(this));
+    this.events.on('init-edit-mode', this.onInitEditMode.bind(this));
+
+    this.onSparklineColorChange = this.onSparklineColorChange.bind(this);
+    this.onSparklineFillChange = this.onSparklineFillChange.bind(this);
+  }
+
+  onInitEditMode() {
+    this.fontSizes = ['20%', '30%', '50%', '70%', '80%', '100%', '110%', '120%', '150%', '170%', '200%'];
+    //this.addEditorTab('Options', 'public/app/plugins/panel/singlestat/editor.html', 2);
+    this.addEditorTab('Options', 'public/plugins/wbl-singlestat/editor.html', 2);
+    //this.addEditorTab('Value Mappings', 'public/app/plugins/panel/singlestat/mappings.html', 3);
+    this.addEditorTab('Value Mappings', 'public/plugins/wbl-singlestat/mappings.html', 3);
+    this.unitFormats = kbn.getUnitFormats();
+  }
+
+  setUnitFormat(subItem: any) {
+    this.panel.format = subItem.value;
+    this.refresh();
+  }
+
+  onDataError(err: any) {
+    this.onDataReceived([]);
+  }
+
+  onDataReceived(dataList: any) {
+    const data: any = {};
+    if (dataList.length > 0 && dataList[0].type === 'table') {
+      this.dataType = 'table';
+      const tableData = dataList.map(this.tableHandler.bind(this));
+      this.setTableValues(tableData, data);
+    } else {
+      this.dataType = 'timeseries';
+      this.series = dataList.map(this.seriesHandler.bind(this));
+      this.setValues(data);
+    }
+    this.data = data;
+    this.render();
+  }
+
+  seriesHandler(seriesData: any) {
+    const series = new TimeSeries({
+      datapoints: seriesData.datapoints || [],
+      alias: seriesData.target,
+    });
+
+    series.flotpairs = series.getFlotPairs(this.panel.nullPointMode);
+    return series;
+  }
+
+  tableHandler(tableData: any) {
+    const datapoints: any = [];
+    const columnNames = {};
+
+    /*tableData.columns.forEach((column, columnIndex) => {
+      columnNames[columnIndex] = column.text;
+    });*/
+
+    this.tableColumnOptions = columnNames;
+    if (!_.find(tableData.columns, ['text', this.panel.tableColumn])) {
+      this.setTableColumnToSensibleDefault(tableData);
+    }
+
+    tableData.rows.forEach((row: any) => {
+      const datapoint = {};
+
+      /*row.forEach((value:any, columnIndex:any) => {
+        const key = columnNames[columnIndex];
+        datapoint[key] = value;
+      });*/
+
+      datapoints.push(datapoint);
+    });
+
+    return datapoints;
+  }
+
+  setTableColumnToSensibleDefault(tableData: any) {
+    if (tableData.columns.length === 1) {
+      this.panel.tableColumn = tableData.columns[0].text;
+    } else {
+      this.panel.tableColumn = _.find(tableData.columns, col => {
+        return col.type !== 'time';
+      }).text;
+    }
+  }
+
+  setTableValues(tableData: any, data: any) {
+    if (!tableData || tableData.length === 0) {
+      return;
+    }
+
+    if (tableData[0].length === 0 || tableData[0][0][this.panel.tableColumn] === undefined) {
+      return;
+    }
+
+    const datapoint = tableData[0][0];
+    data.value = datapoint[this.panel.tableColumn];
+
+    if (_.isString(data.value)) {
+      data.valueFormatted = _.escape(data.value);
+      data.value = 0;
+      data.valueRounded = 0;
+    } else {
+      const decimalInfo = this.getDecimalsForValue(data.value);
+      const formatFunc = kbn.valueFormats[this.panel.format];
+      data.valueFormatted = formatFunc(datapoint[this.panel.tableColumn], decimalInfo.decimals, decimalInfo.scaledDecimals);
+      data.valueRounded = kbn.roundValue(data.value, this.panel.decimals || 0);
+    }
+
+    this.setValueMapping(data);
+  }
+
+  canChangeFontSize() {
+    return this.panel.gauge.show;
+  }
+
+  setColoring(options: any) {
+    if (options.background) {
+      this.panel.colorValue = false;
+      this.panel.colors = ['rgba(71, 212, 59, 0.4)', 'rgba(245, 150, 40, 0.73)', 'rgba(225, 40, 40, 0.59)'];
+    } else {
+      this.panel.colorBackground = false;
+      this.panel.colors = ['rgba(50, 172, 45, 0.97)', 'rgba(237, 129, 40, 0.89)', 'rgba(245, 54, 54, 0.9)'];
+    }
+    this.render();
+  }
+
+  invertColorOrder() {
+    const tmp = this.panel.colors[0];
+    this.panel.colors[0] = this.panel.colors[2];
+    this.panel.colors[2] = tmp;
+    this.render();
+  }
+
+  onColorChange(panelColorIndex: any) {
+    return (color: any) => {
+      this.panel.colors[panelColorIndex] = color;
+      this.render();
+    };
+  }
+
+  onSparklineColorChange(newColor: any) {
+    this.panel.sparkline.lineColor = newColor;
+    this.render();
+  }
+
+  onSparklineFillChange(newColor: any) {
+    this.panel.sparkline.fillColor = newColor;
+    this.render();
+  }
+
+  getDecimalsForValue(value: any) {
+    if (_.isNumber(this.panel.decimals)) {
+      return { decimals: this.panel.decimals, scaledDecimals: null };
+    }
+
+    const delta = value / 2;
+    let dec = -Math.floor(Math.log(delta) / Math.LN10);
+
+    const magn = Math.pow(10, -dec),
+      norm = delta / magn; // norm is between 1.0 and 10.0
+    let size;
+
+    if (norm < 1.5) {
+      size = 1;
+    } else if (norm < 3) {
+      size = 2;
+      // special case for 2.5, requires an extra decimal
+      if (norm > 2.25) {
+        size = 2.5;
+        ++dec;
+      }
+    } else if (norm < 7.5) {
+      size = 5;
+    } else {
+      size = 10;
+    }
+
+    size *= magn;
+
+    // reduce starting decimals if not needed
+    if (Math.floor(value) === value) {
+      dec = 0;
+    }
+
+    const result: any = {};
+    result.decimals = Math.max(0, dec);
+    result.scaledDecimals = result.decimals - Math.floor(Math.log(size) / Math.LN10) + 2;
+
+    return result;
+  }
+
+  setValues(data: any) {
+    data.flotpairs = [];
+
+    if (this.series.length > 1) {
+      const error: any = new Error();
+      error.message = 'Multiple Series Error';
+      error.data =
+        'Metric query returns ' +
+        this.series.length +
+        ' series. Single Stat Panel expects a single series.\n\nResponse:\n' +
+        JSON.stringify(this.series);
+      //throw error;
+    }
+
+    if (this.series && this.series.length > 0) {
+      const lastPoint = _.last(this.series[0].datapoints);
+      const lastValue = _.isArray(lastPoint) ? lastPoint[0] : null;
+
+      if (this.panel.valueName === 'name') {
+        data.value = 0;
+        data.valueRounded = 0;
+        data.valueFormatted = this.series[0].alias;
+      } else if (_.isString(lastValue)) {
+        data.value = 0;
+        data.valueFormatted = _.escape(lastValue);
+        data.valueRounded = 0;
+      } else if (this.panel.valueName === 'last_time') {
+        const formatFunc = kbn.valueFormats[this.panel.format];
+        //data.value = lastPoint[1];
+        data.valueRounded = data.value;
+        data.valueFormatted = formatFunc(data.value, 0, 0);
+      } else {
+        data.value = this.series[0].stats[this.panel.valueName];
+        data.flotpairs = this.series[0].flotpairs;
+
+        const decimalInfo = this.getDecimalsForValue(data.value);
+        const formatFunc = kbn.valueFormats[this.panel.format];
+        data.valueFormatted = formatFunc(data.value, decimalInfo.decimals, decimalInfo.scaledDecimals);
+        data.valueRounded = kbn.roundValue(data.value, decimalInfo.decimals);
+      }
+
+      this.labelItem = [];
+      if (this.panel.targets && this.panel.targets.length > 0) {
+        this.panel.targets.forEach((item: any) => {
+          const obj = {
+            label: item.legendFormat,
+            id: item.legendFormat,
+          };
+          this.labelItem.push(obj);
+        });
+      }
+
+      // Add $__name variable for using in prefix or postfix
+      data.scopedVars = _.extend({}, this.panel.scopedVars);
+      data.scopedVars['__name'] = { value: this.series[0].label };
+    }
+
+    const stats = {
+      avg: 'N/A',
+      count: 'N/A',
+      current: 'N/A',
+      delta: 'N/A',
+      diff: 'N/A',
+      first: 'N/A',
+      logmin: 'N/A',
+      max: 'N/A',
+      min: 'N/A',
+      range: 'N/A',
+      timeStep: 'N/A',
+      total: 'N/A',
+    };
+
+    this.seriesObj = [];
+
+    if (this.panel.targets.length > this.series.length) {
+      try {
+        this.panel.targets.forEach((item: any, index: any) => {
+          const series = this.series;
+          try {
+            if (series && series.length > 0) {
+              series.forEach((seriesItem: any, seriesIndex: any) => {
+                if (item.legendFormat === seriesItem.label) {
+                  this.seriesObj[index] = seriesItem;
+                  throw new Error('series');
+                } else {
+                  if (JSON.stringify(this.seriesObj).indexOf(item.legendFormat) === -1 && seriesIndex === series.length - 1) {
+                    this.seriesObj[index] = { label: item.legendFormat, stats: stats };
+                  }
+                }
+              });
+            } else {
+              this.seriesObj[index] = { label: item.legendFormat, stats: stats };
+            }
+          } catch (e) {
+            if (e.message !== 'series') {
+              throw e;
+            }
+          }
+        });
+      } catch (e) {
+        if (e.message !== 'targets') {
+          throw e;
+        }
+      }
+    } else {
+      this.seriesObj = this.series;
+    }
+
+    if (
+      (this.seriesObj[0].stats[this.panel.valueName] === 'N/A' && this.seriesObj[1].stats[this.panel.valueName] === 'N/A') ||
+      this.seriesObj[2].stats[this.panel.valueName] === 'N/A'
+    ) {
+      data.value = 'N/A';
+      data.valueFormatted = 'N/A';
+    }
+
+    if (
+      this.seriesObj[0].stats[this.panel.valueName] === 'N/A' &&
+      this.seriesObj[1].stats[this.panel.valueName] !== 'N/A' &&
+      this.seriesObj[2].stats[this.panel.valueName] !== 'N/A'
+    ) {
+      data.value = this.seriesObj[1].stats[this.panel.valueName] / this.seriesObj[2].stats[this.panel.valueName];
+      data.valueFormatted = ((this.seriesObj[1].stats[this.panel.valueName] / this.seriesObj[2].stats[this.panel.valueName]) * 100).toFixed(
+        this.panel.decimals
+      );
+      data.valueFormatted = data.valueFormatted + '%';
+    }
+
+    this.setValueMapping(data);
+  }
+
+  setValueMapping(data: any) {
+    // check value to text mappings if its enabled
+    if (this.panel.mappingType === 1) {
+      for (let i = 0; i < this.panel.valueMaps.length; i++) {
+        const map = this.panel.valueMaps[i];
+        // special null case
+        if (map.value === 'null') {
+          if (data.value === null || data.value === void 0) {
+            data.valueFormatted = map.text;
+            return;
+          }
+          continue;
+        }
+
+        if (map.value === 'N/A') {
+          if (data.value === 'N/A' || data.value === void 0) {
+            data.valueFormatted = map.text;
+            return;
+          }
+          continue;
+        }
+
+        // value/number to text mapping
+        const value = parseFloat(map.value);
+        if (value === data.valueRounded) {
+          data.valueFormatted = map.text;
+          return;
+        }
+      }
+    } else if (this.panel.mappingType === 2) {
+      for (let i = 0; i < this.panel.rangeMaps.length; i++) {
+        const map = this.panel.rangeMaps[i];
+        // special null case
+        if (map.from === 'null' && map.to === 'null') {
+          if (data.value === null || data.value === void 0) {
+            data.valueFormatted = map.text;
+            return;
+          }
+          continue;
+        }
+
+        if (map.from === 'N/A' && map.to === 'N/A') {
+          if (data.value === 'N/A' || data.value === void 0) {
+            data.valueFormatted = map.text;
+            return;
+          }
+          continue;
+        }
+
+        // value/number to range mapping
+        const from = parseFloat(map.from);
+        const to = parseFloat(map.to);
+        if (to >= data.valueRounded && from <= data.valueRounded) {
+          data.valueFormatted = map.text;
+          return;
+        }
+      }
+    }
+
+    if (data.value === null || data.value === void 0) {
+      data.valueFormatted = 'no value';
+    }
+  }
+
+  removeValueMap(map: any) {
+    const index = _.indexOf(this.panel.valueMaps, map);
+    this.panel.valueMaps.splice(index, 1);
+    this.render();
+  }
+
+  addValueMap() {
+    this.panel.valueMaps.push({ value: '', op: '=', text: '' });
+  }
+
+  removeRangeMap(rangeMap: any) {
+    const index = _.indexOf(this.panel.rangeMaps, rangeMap);
+    this.panel.rangeMaps.splice(index, 1);
+    this.render();
+  }
+
+  addRangeMap() {
+    this.panel.rangeMaps.push({ from: '', to: '', text: '' });
+  }
+
+  link(scope: any, elem: any, attrs: any, ctrl: any) {
+    //var $location = this.$location;
+    //var linkSrv = this.linkSrv;
+    const $timeout = this.$timeout;
+    const panel = ctrl.panel;
+    const templateSrv = this.templateSrv;
+    let data: any, linkInfo: any;
+    const $panelContainer = elem.find('.panel-container');
+    elem = elem.find('.singlestat-panel');
+    const me = this;
+
+    //let seriesObj: any[] = [];
+
+    function applyColoringThresholds(value: any, valueString: any) {
+      if (!panel.colorValue) {
+        return valueString;
+      }
+
+      const color = getColorForValue(data, value);
+      if (color) {
+        return '<span style="color:' + color + '">' + valueString + '</span>';
+      }
+
+      return valueString;
+    }
+
+    function getSpan(className: any, fontSize: any, value: any) {
+      value = templateSrv.replace(value, data.scopedVars);
+      return '<span class="' + className + '" style="font-size:' + fontSize + '">' + value + '</span>';
+    }
+
+    function getBigValueHtml() {
+      let body = '<div class="singlestat-panel-value-container">';
+
+      if (panel.prefix) {
+        const prefix = applyColoringThresholds(data.value, panel.prefix);
+        body += getSpan('singlestat-panel-prefix', panel.prefixFontSize, prefix);
+      }
+
+      const value = applyColoringThresholds(data.value, data.valueFormatted);
+      body += getSpan('singlestat-panel-value', panel.valueFontSize, value);
+
+      if (panel.postfix) {
+        const postfix = applyColoringThresholds(data.value, panel.postfix);
+        body += getSpan('singlestat-panel-postfix', panel.postfixFontSize, postfix);
+      }
+
+      body += '</div>';
+
+      return body;
+    }
+
+    function getValueText() {
+      let result = panel.prefix ? templateSrv.replace(panel.prefix, data.scopedVars) : '';
+      result += data.valueFormatted;
+      result += panel.postfix ? templateSrv.replace(panel.postfix, data.scopedVars) : '';
+
+      return result;
+    }
+
+    function addGauge() {
+      const width = elem.width();
+      const height = elem.height();
+      // Allow to use a bit more space for wide gauges
+      const dimension = Math.min(width, height * 1.4);
+
+      ctrl.invalidGaugeRange = false;
+      if (panel.gauge.minValue > panel.gauge.maxValue) {
+        ctrl.invalidGaugeRange = true;
+        return;
+      }
+
+      const plotCanvas = $('<div></div>');
+      const plotCss = {
+        top: '1px',
+        margin: 'auto',
+        position: 'relative',
+        height: height * 0.71 + 'px',
+        width: dimension + 'px',
+      };
+
+      plotCanvas.css(plotCss);
+
+      const thresholds = [];
+      for (let i = 0; i < data.thresholds.length; i++) {
+        thresholds.push({
+          value: data.thresholds[i],
+          color: data.colorMap[i],
+        });
+      }
+      thresholds.push({
+        value: panel.gauge.maxValue,
+        color: data.colorMap[data.colorMap.length - 1],
+      });
+
+      const bgColor = config.bootData.user.lightTheme ? 'rgb(230,230,230)' : 'rgb(38,38,38)';
+
+      const fontScale = parseInt(panel.valueFontSize, 10) / 100;
+      const fontSize = Math.min(dimension / 5, 100) * fontScale;
+      // Reduce gauge width if threshold labels enabled
+      const gaugeWidthReduceRatio = panel.gauge.thresholdLabels ? 1.5 : 1;
+      const gaugeWidth = Math.min(dimension / 6, 60) / gaugeWidthReduceRatio;
+      const thresholdMarkersWidth = gaugeWidth / 5;
+      const thresholdLabelFontSize = fontSize / 2.5;
+
+      const options = {
+        series: {
+          gauges: {
+            gauge: {
+              min: panel.gauge.minValue,
+              max: panel.gauge.maxValue,
+              background: { color: bgColor },
+              border: { color: null },
+              shadow: { show: false },
+              width: gaugeWidth,
+            },
+            frame: { show: false },
+            label: { show: false },
+            layout: { margin: 0, thresholdWidth: 0 },
+            cell: { border: { width: 0 } },
+            threshold: {
+              values: thresholds,
+              label: {
+                show: panel.gauge.thresholdLabels,
+                margin: thresholdMarkersWidth + 1,
+                font: { size: thresholdLabelFontSize },
+              },
+              show: panel.gauge.thresholdMarkers,
+              width: thresholdMarkersWidth,
+            },
+            value: {
+              color: panel.colorValue ? getColorForValue(data, data.valueRounded) : null,
+              formatter: () => {
+                return getValueText();
+              },
+              font: {
+                size: fontSize,
+                family: '"Helvetica Neue", Helvetica, Arial, sans-serif',
+              },
+            },
+            show: true,
+          },
+        },
+      };
+
+      elem.append(plotCanvas);
+
+      const plotSeries = {
+        data: [[0, data.valueRounded]],
+      };
+
+      $.plot(plotCanvas, [plotSeries], options);
+    }
+
+    function addSparkline() {
+      const width = elem.width() + 20;
+      if (width < 30) {
+        // element has not gotten it's width yet
+        // delay sparkline render
+        setTimeout(addSparkline, 30);
+        return;
+      }
+
+      const height = ctrl.height;
+      const plotCanvas = $('<div></div>');
+      const plotCss: any = {};
+      plotCss.position = 'absolute';
+
+      if (panel.sparkline.full) {
+        plotCss.bottom = '5px';
+        plotCss.left = '-5px';
+        plotCss.width = width - 10 + 'px';
+        const dynamicHeightMargin = height <= 100 ? 5 : Math.round(height / 100) * 15 + 5;
+        plotCss.height = height - dynamicHeightMargin + 'px';
+      } else {
+        plotCss.bottom = '0px';
+        plotCss.left = '-5px';
+        plotCss.width = width - 10 + 'px';
+        plotCss.height = Math.floor(height * 0.25) + 'px';
+      }
+
+      plotCanvas.css(plotCss);
+
+      const options = {
+        legend: { show: false },
+        series: {
+          lines: {
+            show: true,
+            fill: 1,
+            lineWidth: 1,
+            fillColor: panel.sparkline.fillColor,
+          },
+        },
+        yaxes: { show: false },
+        xaxis: {
+          show: false,
+          mode: 'time',
+          min: ctrl.range.from.valueOf(),
+          max: ctrl.range.to.valueOf(),
+        },
+        grid: { hoverable: false, show: false },
+      };
+
+      elem.append(plotCanvas);
+
+      const plotSeries = {
+        data: data.flotpairs,
+        color: panel.sparkline.lineColor,
+      };
+
+      $.plot(plotCanvas, [plotSeries], options);
+    }
+
+    function addlabel() {
+      let value1 = '',
+        value2 = '';
+
+      if (me.seriesObj[1].stats[panel.valueName] === 'N/A') {
+        value1 = 'N/A';
+      } else {
+        value1 = parseFloat(me.seriesObj[1].stats[panel.valueName]).toFixed(panel.label.decimals);
+      }
+
+      if (me.seriesObj[2].stats[panel.valueName] === 'N/A') {
+        value2 = 'N/A';
+      } else {
+        value2 = parseFloat(me.seriesObj[2].stats[panel.valueName]).toFixed(panel.label.decimals);
+      }
+
+      const table = $(
+        '<table width="100%" border="0">' +
+          '<tbody>' +
+          '<tr style="font-weight: bold; font-size: 110%; color: #526476">' +
+          '<td width="50%" style="border-right: 1px solid">' +
+          value1 +
+          '</td>' +
+          '<td width="50%">' +
+          value2 +
+          '</td>' +
+          '</tr>' +
+          '<tr style="font-size: 85%; color: #6D7C8B">' +
+          '<td width="50%" style="border-right: 1px solid">' +
+          me.seriesObj[1].label +
+          '</td>' +
+          '<td width="50%">' +
+          me.seriesObj[2].label +
+          '</td>' +
+          '</tr>' +
+          '</tbody>' +
+          '</table>'
+      );
+
+      const tableCss = {
+        margin: 'auto',
+        textAlign: 'center',
+      };
+      table.css(tableCss);
+
+      elem.append(table);
+    }
+
+    function render() {
+      if (!ctrl.data) {
+        return;
+      }
+
+      /*const stats = {
+        avg: 'N/A',
+        count: 'N/A',
+        current: 'N/A',
+        delta: 'N/A',
+        diff: 'N/A',
+        first: 'N/A',
+        logmin: 'N/A',
+        max: 'N/A',
+        min: 'N/A',
+        range: 'N/A',
+        timeStep: 'N/A',
+        total: 'N/A',
+      };
+
+      seriesObj = [];
+
+      if (ctrl.panel.targets.length > ctrl.series.length) {
+        try {
+          ctrl.panel.targets.forEach((item: any, index: any) => {
+            const series = ctrl.series;
+            try {
+              if (series && series.length > 0) {
+                series.forEach((seriesItem: any, seriesIndex: any) => {
+                  if (item.legendFormat === seriesItem.label) {
+                    seriesObj[index] = seriesItem;
+                    throw new Error('series');
+                  } else {
+                    if (JSON.stringify(seriesObj).indexOf(item.legendFormat) === -1 && seriesIndex === series.length - 1) {
+                      seriesObj[index] = { label: item.legendFormat, stats: stats };
+                    }
+                  }
+                });
+              } else {
+                seriesObj[index] = { label: item.legendFormat, stats: stats };
+              }
+            } catch (e) {
+              if (e.message !== 'series') {
+                throw e;
+              }
+            }
+          });
+        } catch (e) {
+          if (e.message !== 'targets') {
+            throw e;
+          }
+        }
+      } else {
+        seriesObj = ctrl.series;
+      }
+
+      if (
+        (seriesObj[0].stats[panel.valueName] === 'N/A' && seriesObj[1].stats[panel.valueName] === 'N/A') ||
+        seriesObj[2].stats[panel.valueName] === 'N/A'
+      ) {
+        ctrl.data.value = 'N/A';
+        ctrl.data.valueFormatted = 'N/A';
+      }
+
+      if (
+        seriesObj[0].stats[panel.valueName] === 'N/A' &&
+        seriesObj[1].stats[panel.valueName] !== 'N/A' &&
+        seriesObj[2].stats[panel.valueName] !== 'N/A'
+      ) {
+        ctrl.data.value = seriesObj[1].stats[panel.valueName] / seriesObj[2].stats[panel.valueName];
+        ctrl.data.valueFormatted = ((seriesObj[1].stats[panel.valueName] / seriesObj[2].stats[panel.valueName]) * 100).toFixed(panel.decimals);
+        ctrl.data.valueFormatted = ctrl.data.valueFormatted + '%';
+      }*/
+
+      data = ctrl.data;
+
+      // get thresholds
+      data.thresholds = panel.thresholds.split(',').map((strVale: any) => {
+        return Number(strVale.trim());
+      });
+      data.colorMap = panel.colors;
+
+      const body = panel.gauge.show ? '' : getBigValueHtml();
+
+      if (panel.colorBackground) {
+        const color = getColorForValue(data, data.value);
+        if (color) {
+          $panelContainer.css('background-color', color);
+          if (scope.fullscreen) {
+            elem.css('background-color', color);
+          } else {
+            elem.css('background-color', '');
+          }
+        }
+      } else {
+        $panelContainer.css('background-color', '');
+        elem.css('background-color', '');
+      }
+
+      elem.html(body);
+
+      if (panel.sparkline.show) {
+        addSparkline();
+      }
+
+      if (panel.gauge.show) {
+        addGauge();
+      }
+
+      if (panel.label.show) {
+        addlabel();
+      }
+
+      elem.toggleClass('pointer', panel.links.length > 0);
+
+      if (panel.links.length > 0) {
+        //linkInfo = linkSrv.getPanelLinkAnchorInfo(panel.links[0], data.scopedVars);
+      } else {
+        linkInfo = null;
+      }
+    }
+
+    function hookupDrilldownLinkTooltip() {
+      // drilldown link tooltip
+      const drilldownTooltip = $('<div id="tooltip" class="">hello</div>"');
+
+      elem.mouseleave(() => {
+        if (panel.links.length === 0) {
+          return;
+        }
+        $timeout(() => {
+          drilldownTooltip.detach();
+        });
+      });
+
+      elem.click((evt: any) => {
+        if (!linkInfo) {
+          return;
+        }
+        // ignore title clicks in title
+        if ($(evt).parents('.panel-header').length > 0) {
+          return;
+        }
+
+        if (linkInfo.target === '_blank') {
+          window.open(linkInfo.href, '_blank');
+          return;
+        }
+
+        if (linkInfo.href.indexOf('http') === 0) {
+          window.location.href = linkInfo.href;
+        } else {
+          $timeout(() => {
+            //$location.url(linkInfo.href);
+          });
+        }
+
+        drilldownTooltip.detach();
+      });
+
+      elem.mousemove((e: any) => {
+        if (!linkInfo) {
+          return;
+        }
+
+        drilldownTooltip.text('click to go to: ' + linkInfo.title);
+        drilldownTooltip.place_tt(e.pageX, e.pageY - 50);
+      });
+    }
+
+    hookupDrilldownLinkTooltip();
+
+    this.events.on('render', () => {
+      render();
+      ctrl.renderingCompleted();
+    });
+  }
+}
+
+function getColorForValue(data: any, value: any) {
+  if (!_.isFinite(value)) {
+    return null;
+  }
+  for (let i = data.thresholds.length; i > 0; i--) {
+    if (value >= data.thresholds[i - 1]) {
+      return data.colorMap[i];
+    }
+  }
+  return _.first(data.colorMap);
+}
+
+export { SingleStatCtrl, SingleStatCtrl as PanelCtrl, getColorForValue };

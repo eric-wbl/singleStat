@@ -1,0 +1,19 @@
+{
+  "type": "panel",
+  "name": "wbl-Singlestat",
+  "id": "wbl-singlestat",
+
+  "info": {
+    "description": "WBL Singlestat Panel for Grafana",
+    "author": {
+      "name": "Grafana Project",
+      "url": "https://grafana.com"
+    },
+    "logos": {
+      "small": "img/icn-singlestat-panel.svg",
+      "large": "img/icn-singlestat-panel.svg"
+    },
+    "version": "1.0.0"
+  }
+}
+

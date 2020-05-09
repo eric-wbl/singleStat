@@ -1,0 +1,26 @@
+{
+  "name": "singleStat-panel",
+  "version": "1.0.0-dev",
+  "description": "singleStat Panel Plugin for Grafana",
+  "scripts": {
+    "build": "grafana-toolkit plugin:build",
+    "test": "grafana-toolkit plugin:test",
+    "dev": "grafana-toolkit plugin:dev"
+  },
+  "keywords": [
+    "grafana",
+    "plugin",
+    "panel"
+  ],
+  "author": "Wubaolong",
+  "license": "MIT",
+  "devDependencies": {
+    "@grafana/toolkit": "next",
+    "@types/lodash": "4.14.132",
+    "lodash": "latest"
+  },
+  "dependencies": {
+    "@types/jquery": "^3.3.38",
+    "react-scripts": "3.4.0"
+  }
+}
