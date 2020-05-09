@@ -1,15 +1,16 @@
-## wbl test Panel Plugin for Grafana
+## wbl singleStat Panel Plugin for Grafana
 
-Using Docker:
+Using:
 1. Clone the repository and `cd` to it
-1. make sure you have [yarn]( https://yarnpkg.com/) installed
-1. install project dependencies: `yarn install --pure-lockfile`
-1. Start the "watch" task: `yarn watch`
-1. Run a local Grafana instance with the development version of the plugin: `docker run -p 3000:3000 -d --name grafana-plugin-dev --volume $(pwd)/dist:/var/lib/grafana/plugins/clock-panel grafana/grafana`
-1. Check the logs to see that Grafana has started up: `docker logs -f grafana-plugin-dev`
-1. Open Grafana at http://localhost:3000/
-1. Log in with username "admin" and password "admin"
-1. Create new dashboard and add the plugin
+2. make sure you have [npm] installed
+3. install project dependencies: `npm install --pure-lockfile`
+4. To Build a development task: `npm run dev`
+5. To build a production task: `npm run build`
+6. Build dist in: `\grafana\data\plugins`
+7. Start grafana: `\grafana\bin： execute grafana-server.exe`
+8. Open browser at http://localhost:3000/
+9. Log in with username "admin" and password "admin"
+10. Create new dashboard and add the singleStat plugin
 
-To build a production build with minification: `yarn build`
-
+Dev:
+1.This wblSingleStat plug-in was developed on the base of singleStat
