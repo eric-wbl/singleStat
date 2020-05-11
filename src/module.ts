@@ -118,11 +118,19 @@ class SingleStatCtrl extends MetricsPanelCtrl {
   }
 
   onDataError(err: any) {
-    this.onDataReceived([]);
+    const error: any = new Error();
+    error.message = 'SingleStat plugin Error';
+    error.data =
+      'Metric query returns ' +
+      this.series.length +
+      ' series. Single Stat Panel expects a single series.\n\nResponse:\n' +
+      JSON.stringify(this.series);
+    throw error;
   }
 
   onDataReceived(dataList: any) {
     const data: any = {};
+
     if (dataList.length > 0 && dataList[0].type === 'table') {
       this.dataType = 'table';
       const tableData = dataList.map(this.tableHandler.bind(this));
@@ -397,24 +405,32 @@ class SingleStatCtrl extends MetricsPanelCtrl {
       this.seriesObj = this.series;
     }
 
-    if (
-      (this.seriesObj[0].stats[this.panel.valueName] === 'N/A' && this.seriesObj[1].stats[this.panel.valueName] === 'N/A') ||
-      this.seriesObj[2].stats[this.panel.valueName] === 'N/A'
-    ) {
-      data.value = 'N/A';
-      data.valueFormatted = 'N/A';
-    }
+    //下面的使用率，使用量，总量，为了好理解，所以如此叫法。具体以自己在数据源中配置为准
+    //seriesObj[0]:使用率，seriesObj[1]:使用量，seriesObj[2]:总量。顺序不能乱
+    //新添加插件，没有配置数据源情况下，避免报错   //A-series
+    if (this.seriesObj && this.seriesObj.length > 2) {
+      //如果使用率，使用量，为N/A，或者总量为N/A，设置使用率为N/A
+      //我们插件使用率从data取数据。使用量，总量从seriesObj中取数据。
+      if (
+        (this.seriesObj[0].stats[this.panel.valueName] === 'N/A' && this.seriesObj[1].stats[this.panel.valueName] === 'N/A') ||
+        this.seriesObj[2].stats[this.panel.valueName] === 'N/A'
+      ) {
+        data.value = 'N/A';
+        data.valueFormatted = 'N/A';
+      }
 
-    if (
-      this.seriesObj[0].stats[this.panel.valueName] === 'N/A' &&
-      this.seriesObj[1].stats[this.panel.valueName] !== 'N/A' &&
-      this.seriesObj[2].stats[this.panel.valueName] !== 'N/A'
-    ) {
-      data.value = this.seriesObj[1].stats[this.panel.valueName] / this.seriesObj[2].stats[this.panel.valueName];
-      data.valueFormatted = ((this.seriesObj[1].stats[this.panel.valueName] / this.seriesObj[2].stats[this.panel.valueName]) * 100).toFixed(
-        this.panel.decimals
-      );
-      data.valueFormatted = data.valueFormatted + '%';
+      //使用率为N/A; 使用量，总量有数据，我们自己计算使用率
+      if (
+        this.seriesObj[0].stats[this.panel.valueName] === 'N/A' &&
+        this.seriesObj[1].stats[this.panel.valueName] !== 'N/A' &&
+        this.seriesObj[2].stats[this.panel.valueName] !== 'N/A'
+      ) {
+        data.value = this.seriesObj[1].stats[this.panel.valueName] / this.seriesObj[2].stats[this.panel.valueName];
+        data.valueFormatted = ((this.seriesObj[1].stats[this.panel.valueName] / this.seriesObj[2].stats[this.panel.valueName]) * 100).toFixed(
+          this.panel.decimals
+        );
+        data.valueFormatted = data.valueFormatted + '%';
+      }
     }
 
     this.setValueMapping(data);
@@ -718,6 +734,12 @@ class SingleStatCtrl extends MetricsPanelCtrl {
     }
 
     function addlabel() {
+      if (me.seriesObj && me.seriesObj.length < 2) {
+        panel.label.show = false;
+        console.log('请添加数据源');
+        return;
+      }
+
       let value1 = '',
         value2 = '';
 

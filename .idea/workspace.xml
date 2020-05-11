@@ -2,11 +2,9 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="667b97b0-b984-4e64-be65-1b71ed3901c1" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/singleStat.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/singleStat.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/node_modules.rar" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/yarn.lock" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/module.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/module.ts" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -30,7 +28,7 @@
   <component name="PropertiesComponent">
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="last_opened_file_path" value="E:/svn/grafana" />
     <property name="nodejs_package_manager_path" value="npm" />
     <property name="ts.external.directory.path" value="H:\webstorm\WebStorm 2019.2.4\plugins\JavaScriptLanguage\jsLanguageServicesImpl\external" />
   </component>
@@ -91,7 +89,9 @@
       <workItem from="1588983603046" duration="7115000" />
       <workItem from="1589004123295" duration="827000" />
       <workItem from="1589004973463" duration="19000" />
-      <workItem from="1589004994143" duration="706000" />
+      <workItem from="1589004994143" duration="1485000" />
+      <workItem from="1589013430073" duration="4228000" />
+      <workItem from="1589157754334" duration="6695000" />
     </task>
     <servers />
   </component>
