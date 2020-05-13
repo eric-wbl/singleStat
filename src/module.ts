@@ -125,7 +125,8 @@ class SingleStatCtrl extends MetricsPanelCtrl {
       this.series.length +
       ' series. Single Stat Panel expects a single series.\n\nResponse:\n' +
       JSON.stringify(this.series);
-    throw error;
+    console.log("error: " + error);
+    //throw error;
   }
 
   onDataReceived(dataList: any) {
@@ -791,75 +792,6 @@ class SingleStatCtrl extends MetricsPanelCtrl {
       if (!ctrl.data) {
         return;
       }
-
-      /*const stats = {
-        avg: 'N/A',
-        count: 'N/A',
-        current: 'N/A',
-        delta: 'N/A',
-        diff: 'N/A',
-        first: 'N/A',
-        logmin: 'N/A',
-        max: 'N/A',
-        min: 'N/A',
-        range: 'N/A',
-        timeStep: 'N/A',
-        total: 'N/A',
-      };
-
-      seriesObj = [];
-
-      if (ctrl.panel.targets.length > ctrl.series.length) {
-        try {
-          ctrl.panel.targets.forEach((item: any, index: any) => {
-            const series = ctrl.series;
-            try {
-              if (series && series.length > 0) {
-                series.forEach((seriesItem: any, seriesIndex: any) => {
-                  if (item.legendFormat === seriesItem.label) {
-                    seriesObj[index] = seriesItem;
-                    throw new Error('series');
-                  } else {
-                    if (JSON.stringify(seriesObj).indexOf(item.legendFormat) === -1 && seriesIndex === series.length - 1) {
-                      seriesObj[index] = { label: item.legendFormat, stats: stats };
-                    }
-                  }
-                });
-              } else {
-                seriesObj[index] = { label: item.legendFormat, stats: stats };
-              }
-            } catch (e) {
-              if (e.message !== 'series') {
-                throw e;
-              }
-            }
-          });
-        } catch (e) {
-          if (e.message !== 'targets') {
-            throw e;
-          }
-        }
-      } else {
-        seriesObj = ctrl.series;
-      }
-
-      if (
-        (seriesObj[0].stats[panel.valueName] === 'N/A' && seriesObj[1].stats[panel.valueName] === 'N/A') ||
-        seriesObj[2].stats[panel.valueName] === 'N/A'
-      ) {
-        ctrl.data.value = 'N/A';
-        ctrl.data.valueFormatted = 'N/A';
-      }
-
-      if (
-        seriesObj[0].stats[panel.valueName] === 'N/A' &&
-        seriesObj[1].stats[panel.valueName] !== 'N/A' &&
-        seriesObj[2].stats[panel.valueName] !== 'N/A'
-      ) {
-        ctrl.data.value = seriesObj[1].stats[panel.valueName] / seriesObj[2].stats[panel.valueName];
-        ctrl.data.valueFormatted = ((seriesObj[1].stats[panel.valueName] / seriesObj[2].stats[panel.valueName]) * 100).toFixed(panel.decimals);
-        ctrl.data.valueFormatted = ctrl.data.valueFormatted + '%';
-      }*/
 
       data = ctrl.data;
 
