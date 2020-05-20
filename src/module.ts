@@ -125,7 +125,7 @@ class SingleStatCtrl extends MetricsPanelCtrl {
       this.series.length +
       ' series. Single Stat Panel expects a single series.\n\nResponse:\n' +
       JSON.stringify(this.series);
-    console.log("error: " + error);
+    console.log('error: ' + error);
     //throw error;
   }
 
@@ -414,6 +414,7 @@ class SingleStatCtrl extends MetricsPanelCtrl {
       //我们插件使用率从data取数据。使用量，总量从seriesObj中取数据。
       if (
         (this.seriesObj[0].stats[this.panel.valueName] === 'N/A' && this.seriesObj[1].stats[this.panel.valueName] === 'N/A') ||
+        this.seriesObj[1].stats[this.panel.valueName] === 'N/A' ||
         this.seriesObj[2].stats[this.panel.valueName] === 'N/A'
       ) {
         data.value = 'N/A';

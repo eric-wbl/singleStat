@@ -27,7 +27,7 @@
   <component name="PropertiesComponent">
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
-    <property name="last_opened_file_path" value="E:/svn/grafana" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="nodejs_package_manager_path" value="npm" />
     <property name="ts.external.directory.path" value="H:\webstorm\WebStorm 2019.2.4\plugins\JavaScriptLanguage\jsLanguageServicesImpl\external" />
   </component>
@@ -91,6 +91,7 @@
       <workItem from="1589004994143" duration="1485000" />
       <workItem from="1589013430073" duration="4228000" />
       <workItem from="1589157754334" duration="6695000" />
+      <workItem from="1589940836077" duration="698000" />
     </task>
     <servers />
   </component>
